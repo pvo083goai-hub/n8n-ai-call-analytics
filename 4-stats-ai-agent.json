@@ -1,0 +1,170 @@
+{
+  "name": "4 - Stats AI agent (chat)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -304,
+        -96
+      ],
+      "id": "b19c3b39-4e36-4eae-a3bc-961bce07cf81",
+      "name": "When chat message received"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are an AI assistant for a cake shop.\n\nToday's date is {{ $now.format('yyyy-MM-dd') }}.\n\nThe user may ask for statistics about customer calls or negative reviews.\n\nWhen the user asks for statistics for any period (today, yesterday, this week, this month, last month, or provides explicit dates), use the Get Call Stats tool.\n\nExtract two parameters:\n\n- startDate (YYYY-MM-DD)\n- endDate (YYYY-MM-DD)\n\nAlways call the tool before answering.\n\nAfter receiving the tool response, answer in Ukrainian.\n\nUse this format:\n\nЗа період з <startDate> по <endDate> було оброблено <totalCalls> дзвінків.\n\nНегативних дзвінків: <negativeCalls>.\n\nЦе становить <negativeCallPercent> від загальної кількості.\n\nDo not invent statistics.\nOnly use data returned by the tool."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -80,
+        -96
+      ],
+      "id": "5c11e2d1-a13e-4d8f-a29a-c17f62f3a3df",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        112
+      ],
+      "id": "da2e3e36-518e-40d9-8f7a-2d5c35f3d819",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR groqApi CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -80,
+        112
+      ],
+      "id": "840c6bc1-6339-435e-9994-0bad00015b67",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "description": "Returns call statistics for the specified date range.",
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_GET_CALL_STATS_WORKFLOW_ID",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "startDate": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('startDate', ``, 'string') }}",
+            "endDate": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('endDate', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "startDate",
+              "displayName": "startDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "endDate",
+              "displayName": "endDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        80,
+        112
+      ],
+      "id": "72be6d94-8a25-48e3-9d1b-2483b1edb8bc",
+      "name": "Call n8n Workflow Tool"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call n8n Workflow Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "nodeGroups": [],
+  "tags": []
+}

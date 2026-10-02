@@ -1,0 +1,95 @@
+{
+  "name": "3 - Get call stats (tool)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "startDate"
+            },
+            {
+              "name": "endDate"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        0
+      ],
+      "id": "f000375c-fdca-4875-90b8-93cfc6329e8e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "1058840a-db52-4dd1-afd1-9eed62990c07",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\n\nconst totalCalls = rows.length;\n\nconst negativeCalls = rows.filter(\n  item => item.json.tone === \"negative\"\n).length;\n\nconst negativeCallPercent =\n  totalCalls === 0\n    ? \"0%\"\n    : Math.round((negativeCalls / totalCalls) * 100) + \"%\";\n\nreturn [\n  {\n    json: {\n      totalCalls,\n      negativeCalls,\n      negativeCallPercent\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ],
+      "id": "b197a8be-d8b9-40b3-9704-1612666e17a7",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "nodeGroups": [],
+  "tags": []
+}

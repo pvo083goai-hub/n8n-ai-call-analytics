@@ -1,0 +1,439 @@
+{
+  "name": "1 - Handle audio queue (every 2 min)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -784,
+        -288
+      ],
+      "id": "b23f8406-ceca-4437-881f-fff5823ce37c",
+      "name": "EACH 2 MINUTE"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Call queue"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "CALL's list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -560,
+        -288
+      ],
+      "id": "fb2dfb97-5e53-4e30-9dcc-4a128112c67d",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR googleSheetsOAuth2Api CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_TRANSCRIPTION_WORKFLOW_ID",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "recording_url": "={{$json.recording_url}}"
+          },
+          "matchingColumns": [
+            "recording_url"
+          ],
+          "schema": [
+            {
+              "id": "recording_url",
+              "displayName": "recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -336,
+        -288
+      ],
+      "id": "3868e869-ba50-463f-bad9-2c5fbf7656ac",
+      "name": "Call 'ASSEMBLY AI TRANSCRIBATION'"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Call queue"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "CALL's list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "recording_url": "={{$('Get row(s) in sheet').item.json.recording_url}}",
+            "dialog": "=",
+            "row_number": "={{$('Get row(s) in sheet').item.json.row_number}}",
+            "status": "Done"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "recording_url",
+              "displayName": "recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dialog",
+              "displayName": "dialog",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        512,
+        -288
+      ],
+      "id": "642c7c92-a9fa-4b78-9c40-da5cecaf863b",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR googleSheetsOAuth2Api CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.dialog}}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an AI quality analyst for a cake delivery company.\n\nYour task is to analyze the provided phone call transcript.\n\nDetermine:\n\n1. tone\nPossible values:\n- positive\n- negative\n- neutral\n\n2. category\nPossible values:\n- quality of cake\n- delivery quality\n- other\n\nRules:\n\n- \"quality of cake\" if the customer mainly discusses taste, freshness, appearance, ingredients, decoration or quality of the cake.\n- \"delivery quality\" if the customer mainly discusses courier, delivery time, packaging, damaged cake, transportation or logistics.\n- \"other\" for all remaining cases.\n\nReturn ONLY valid JSON.\n\nExample:\n\n{\n  \"tone\": \"positive\",\n  \"category\": \"quality of cake\"\n}\n\nDo not return explanations.\nDo not use markdown.\nDo not output any text except JSON.\n\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -80,
+        -288
+      ],
+      "id": "1a33ad07-acfa-4b84-afb7-917e4e1f8c79",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"tone\": \"positive\",\n  \"category\": \"quality of cake\"\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        -64
+      ],
+      "id": "99c67211-8270-4a19-94f0-9d6f3a927fef",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "YOUR_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "recording_url": "={{ $('Get row(s) in sheet').item.json.recording_url }}",
+            "tone": "={{ $json.output.tone }}",
+            "category": "={{ $json.output.category }}",
+            "call_duration_seconds": 0
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "recording_url",
+              "displayName": "recording_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "call_duration_seconds",
+              "displayName": "call_duration_seconds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tone",
+              "displayName": "tone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        -288
+      ],
+      "id": "688a2a70-c885-47e2-8cc9-0f3d4b6644a7",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -80
+      ],
+      "id": "4fe9fa03-935b-45a5-a51a-fa4fdf0c50ea",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR groqApi CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        144
+      ],
+      "id": "af80e847-46f2-4728-a123-e58dbb630548",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR groqApi CREDENTIAL"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "EACH 2 MINUTE": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Call 'ASSEMBLY AI TRANSCRIBATION'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'ASSEMBLY AI TRANSCRIBATION'": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "nodeGroups": [],
+  "tags": []
+}

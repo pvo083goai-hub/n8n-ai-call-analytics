@@ -1,0 +1,337 @@
+{
+  "name": "2 - AssemblyAI transcription (sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0a88e79-7b06-4af0-80ec-96d808de56bb",
+              "name": "=URL",
+              "value": "={{ $json.recording_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -560,
+        -160
+      ],
+      "id": "5b623ae9-a38b-4266-8f71-198cb8135553",
+      "name": "URL"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n\n  const link = item.json.URL;\n\n  const fileId = link.match(/[-\\w]{25,}/)[0];\n\n  item.json.fileId = fileId;\n  item.json.downloadLink =\n    `https://drive.google.com/uc?export=download&id=${fileId}`;\n\n  return item;\n\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        -160
+      ],
+      "id": "acb2fd96-0774-4e7e-b808-6da298f602e8",
+      "name": "EXTRACT URL"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.eu.assemblyai.com/v2/transcript",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"audio_url\": \"{{ $json.downloadLink }}\",\n  \"speech_models\": [\n    \"universal-3-5-pro\",\n    \"universal-2\"\n  ],\n  \"language_code\": \"uk\",\n  \"speaker_labels\": true,\n  \"speakers_expected\": 2\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -112,
+        -160
+      ],
+      "id": "a9b11930-221d-4b6c-ac77-068e5b4f031a",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR httpHeaderAuth CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.eu.assemblyai.com/v2/transcript/{{$json.id}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        320,
+        -160
+      ],
+      "id": "569a3052-72c5-4d48-bc27-3c2df170fd12",
+      "name": "HTTP Request1 GET",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR httpHeaderAuth CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8a654114-0d2a-4c31-8bdc-09b1457cbc05",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "97b1e5eb-ecd3-4763-ac2a-4c31dd604485",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "error",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        -160
+      ],
+      "id": "8c82f996-436d-4c29-bb8f-10a042ec8b10",
+      "name": "If COMPLETED OR ERROR?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "AssemblyAI return ERROR"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        944,
+        144
+      ],
+      "id": "c051c361-c611-4403-8ba2-1f0d0718a6f8",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f01d5400-eb4c-49d0-9708-11f22f1e0c15",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        816,
+        -176
+      ],
+      "id": "1953ae82-831c-4d49-b55c-7df8eb3d1dbc",
+      "name": "If completed"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        -160
+      ],
+      "id": "ab7cf4b3-1921-4231-998e-bce47977d646",
+      "name": "Wait 5 seconds"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = $input.first().json;\n\nlet dialog = \"\";\n\n// Если есть разбивка по репликам\nif (transcript.utterances && transcript.utterances.length > 0) {\n\n  const managerKeywords = [\n    \"оператор\",\n    \"менеджер\",\n    \"можу допомогти\",\n    \"чим можу допомогти\",\n    \"добрий день\",\n    \"вітаю\",\n    \"оформлю повернення\",\n    \"ми повернемо\",\n    \"вибачте\",\n    \"перепрошую\",\n    \"дякуємо\"\n  ];\n\n  const customerKeywords = [\n    \"замовляла\",\n    \"хочу\",\n    \"незадоволена\",\n    \"доставка\",\n    \"кур'єр\",\n    \"повернення\",\n    \"гроші\",\n    \"свято\",\n    \"діти\",\n    \"проблема\",\n    \"скарга\",\n    \"чому\",\n    \"коли\"\n  ];\n\n  const scores = {};\n\n  for (const u of transcript.utterances) {\n\n    const speaker = u.speaker;\n\n    if (!scores[speaker]) {\n      scores[speaker] = {\n        manager: 0,\n        customer: 0\n      };\n    }\n\n    const text = (u.text || \"\").toLowerCase();\n\n    managerKeywords.forEach(word => {\n      if (text.includes(word)) scores[speaker].manager++;\n    });\n\n    customerKeywords.forEach(word => {\n      if (text.includes(word)) scores[speaker].customer++;\n    });\n  }\n\n  const labels = {};\n\n  Object.keys(scores).forEach(speaker => {\n\n    if (scores[speaker].manager > scores[speaker].customer) {\n      labels[speaker] = \"Менеджер\";\n    } else if (scores[speaker].customer > scores[speaker].manager) {\n      labels[speaker] = \"Клієнт\";\n    } else {\n      labels[speaker] = speaker;\n    }\n\n  });\n\n  dialog = transcript.utterances\n    .map(u => `${labels[u.speaker]}: ${u.text}`)\n    .join(\"\\n\\n\");\n\n} else {\n\n  // Если AssemblyAI не вернул utterances\n  dialog = transcript.text || \"\";\n\n}\n\nreturn [{\n  json: {\n    ...transcript,\n    dialog\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -272
+      ],
+      "id": "4207c5a7-c7d1-46dc-83a7-33d36519284a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "recording_url"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -752,
+        -160
+      ],
+      "id": "b80d7669-d2c0-4f0c-b9ae-2dc0f736e27f",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "URL": {
+      "main": [
+        [
+          {
+            "node": "EXTRACT URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EXTRACT URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait 5 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1 GET": {
+      "main": [
+        [
+          {
+            "node": "If COMPLETED OR ERROR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If COMPLETED OR ERROR?": {
+      "main": [
+        [
+          {
+            "node": "If completed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 5 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If completed": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5 seconds": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1 GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "nodeGroups": [],
+  "tags": []
+}
